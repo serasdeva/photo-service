@@ -733,6 +733,43 @@ html[data-theme='dark'] .public-site {
   object-fit: cover;
 }
 
+.gallery-item .gallery-series-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 5px 7px 5px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(18, 22, 30, 0.9), rgba(18, 22, 30, 0.72));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(12px);
+}
+
+.gallery-item .gallery-series-badge > .fa-layer-group {
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.gallery-item .gallery-series-count {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .gallery-item figcaption {
   padding: 14px 16px 16px;
 }

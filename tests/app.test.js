@@ -1552,7 +1552,7 @@ test('gallery renders first page on server and paginates through the API', async
     );
     assert.deepEqual(
       Object.keys(first.body.items[0]).sort(),
-      ['category', 'description', 'height', 'thumbnail', 'title', 'type', 'url', 'width'],
+      ['category', 'description', 'height', 'theme', 'themeCount', 'thumbnail', 'title', 'type', 'url', 'width'],
       'API exposes only the card fields, not internal id/order/timestamps'
     );
 
@@ -1591,6 +1591,55 @@ test('gallery renders first page on server and paginates through the API', async
     assert.deepEqual(emptyCategory.body, { items: [], total: 0 });
   } finally {
     await cleanup();
+  }
+});
+
+test('gallery theme groups keep related photos together in the same slideshow', async () => {
+  const theme = `theme-${Date.now()}`;
+  const created = await GalleryItem.bulkCreate([
+    {
+      title: 'Фото 1 темы',
+      type: 'image',
+      url: '/gallery-placeholders/sample-1.svg',
+      category: 'wedding',
+      theme,
+      description: 'Серия 1',
+      order: 10,
+    },
+    {
+      title: 'Фото 2 темы',
+      type: 'image',
+      url: '/gallery-placeholders/sample-2.svg',
+      category: 'wedding',
+      theme,
+      description: 'Серия 2',
+      order: 20,
+    },
+    {
+      title: 'Отдельная работа',
+      type: 'image',
+      url: '/gallery-placeholders/sample-3.svg',
+      category: 'portrait',
+      description: 'Обычная работа',
+      order: 30,
+    },
+  ]);
+
+  try {
+    const themed = await request(app).get(`/api/gallery?theme=${encodeURIComponent(theme)}&limit=48`);
+    assert.equal(themed.status, 200);
+    assert.equal(themed.body.total, 2);
+    assert.equal(themed.body.items.length, 2);
+    assert.ok(themed.body.items.every((item) => item.theme === theme));
+    assert.ok(themed.body.items.every((item) => item.themeCount === 2));
+
+    const page = await request(app).get('/gallery');
+    assert.equal(page.status, 200);
+    assert.match(page.text, new RegExp(`data-theme="${theme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
+    assert.match(page.text, /class="gallery-series-badge"/);
+    assert.match(page.text, /class="gallery-series-count">2 фото/);
+  } finally {
+    await GalleryItem.destroy({ where: { id: created.map((item) => item.id) } });
   }
 });
 

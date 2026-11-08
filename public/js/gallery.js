@@ -58,6 +58,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const getThemeKey = (element) => {
+    const raw = element?.getAttribute?.('data-theme') || '';
+    return raw.trim();
+  };
+
   const buildCard = (item) => {
     const figure = document.createElement('figure');
     figure.className = 'gallery-item';
@@ -66,13 +71,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const category = item.category || 'general';
     const title = item.title || '';
+    const theme = item.theme || '';
+    const themeCount = Number.parseInt(item.themeCount, 10) || 1;
     figure.setAttribute('data-gallery-item', '');
     figure.setAttribute('data-category', category);
+    figure.setAttribute('data-theme', theme);
+    figure.setAttribute('data-theme-count', String(themeCount));
     figure.setAttribute('data-src', item.url || '');
     figure.setAttribute('data-mime', item.type === 'video' ? 'video' : 'image');
     figure.setAttribute('data-poster', item.thumbnail || '');
     figure.setAttribute('data-title', title);
     figure.setAttribute('aria-label', `Открыть ${title}`);
+
+    if (theme) {
+      const badge = document.createElement('span');
+      badge.className = 'gallery-series-badge';
+      const icon = document.createElement('i');
+      icon.className = 'fa-solid fa-layer-group';
+      icon.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span');
+      label.className = 'gallery-series-label';
+      label.textContent = 'Фотосерия';
+      badge.append(icon, label);
+      if (themeCount > 1) {
+        const count = document.createElement('span');
+        count.className = 'gallery-series-count';
+        count.textContent = `${themeCount} фото`;
+        badge.append(count);
+      }
+      figure.append(badge);
+    }
 
     let media;
     if (item.type === 'video') {
@@ -242,12 +270,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const openLightbox = (item) => {
+  const openLightbox = async (item) => {
     if (!lightbox) return;
-    // листаем только то, что реально загружено
-    lightboxItems = loadedItems();
-    if (!lightboxItems.length || !lightboxItems.includes(item)) return;
-    currentIndex = Math.max(lightboxItems.indexOf(item), 0);
+
+    const themeKey = getThemeKey(item);
+    let nextItems = [];
+
+    if (themeKey) {
+      try {
+        const params = new URLSearchParams({ theme: themeKey, limit: '200' });
+        const response = await fetch(`${API_URL}?${params.toString()}`);
+        if (response.ok) {
+          const data = await response.json();
+          nextItems = Array.isArray(data.items) ? data.items.map((entry) => buildCard(entry)) : [];
+        }
+      } catch {
+        nextItems = [];
+      }
+    }
+
+    if (!nextItems.length) {
+      nextItems = loadedItems().filter((candidate) => {
+        if (themeKey) return getThemeKey(candidate) === themeKey;
+        return candidate === item;
+      });
+    }
+
+    if (!nextItems.length) return;
+
+    lightboxItems = nextItems;
+    currentIndex = Math.max(nextItems.indexOf(item), 0);
+    if (currentIndex === -1 && nextItems.length) currentIndex = 0;
+
     lastFocused = document.activeElement;
     lightbox.classList.add('open');
     document.body.style.overflow = 'hidden';

@@ -75,6 +75,8 @@
               class="gallery-item reveal"
               data-gallery-item
               data-category="<%= item.category || 'general' %>"
+              data-theme="<%= item.theme || '' %>"
+              data-theme-count="<%= item.themeCount || 1 %>"
               data-src="<%= item.url %>"
               data-mime="<%= item.type || 'image' %>"
               data-poster="<%= item.thumbnail || '' %>"
@@ -83,6 +85,15 @@
               role="button"
               aria-label="Открыть <%= item.title %>"
             >
+              <% if (item.theme) { %>
+                <span class="gallery-series-badge">
+                  <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                  <span class="gallery-series-label">Фотосерия</span>
+                  <% if (item.themeCount > 1) { %>
+                    <span class="gallery-series-count"><%= item.themeCount %> фото</span>
+                  <% } %>
+                </span>
+              <% } %>
               <% if (item.type === 'video') { %>
                 <video src="<%= item.url %>" muted playsinline preload="metadata"<% if (item.thumbnail) { %> poster="<%= item.thumbnail %>"<% } %>></video>
                 <span class="play-badge"><i class="fa-solid fa-play"></i></span>

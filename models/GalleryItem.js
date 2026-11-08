@@ -41,6 +41,11 @@ const GalleryItem = sequelize.define(
       allowNull: false,
       defaultValue: 'general',
     },
+    theme: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
     description: {
       type: DataTypes.TEXT,
       allowNull: true,

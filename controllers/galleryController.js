@@ -53,19 +53,41 @@ function parsePositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
-async function queryGallery({ q = '', category = '', offset = 0, limit = SSR_PAGE_SIZE } = {}) {
+async function queryGallery({
+  q = '',
+  category = '',
+  theme = '',
+  offset = 0,
+  limit = SSR_PAGE_SIZE,
+} = {}) {
   const allItems = await GalleryItem.findAll({ order: [['order', 'ASC']], raw: true });
   // Категории всегда считаем по всем работам: иначе чипы исчезают при фильтре.
   const categories = buildCategoryList(allItems);
+  const themeCounts = {};
+
+  allItems.forEach((item) => {
+    const key = String(item.theme || '').trim();
+    if (!key) return;
+    themeCounts[key] = (themeCounts[key] || 0) + 1;
+  });
+
+  const normalizedTheme = typeof theme === 'string' ? theme.trim() : '';
 
   // SQLite LIKE не понимает регистр non-ASCII, поэтому фильтр и пагинация — в JS.
-  const matched = filterByTerm(allItems, q, ['title', 'category', 'description']);
-  const inCategory = category
-    ? matched.filter((item) => (item.category || 'general') === category)
+  const matched = filterByTerm(allItems, q, ['title', 'category', 'description', 'theme']);
+  const inTheme = normalizedTheme
+    ? matched.filter((item) => (item.theme || '').trim() === normalizedTheme)
     : matched;
+  const inCategory = category
+    ? inTheme.filter((item) => (item.category || 'general') === category)
+    : inTheme;
+  const finalItems = inCategory.slice(offset, offset + limit).map((item) => ({
+    ...item,
+    themeCount: (item.theme ? themeCounts[String(item.theme).trim()] : 0) || 1,
+  }));
 
   return {
-    items: inCategory.slice(offset, offset + limit),
+    items: finalItems,
     total: inCategory.length,
     allTotal: allItems.length,
     categories,
@@ -115,6 +137,8 @@ function toPublicGalleryItem(item) {
   return {
     title: item.title,
     category: item.category || 'general',
+    theme: item.theme || null,
+    themeCount: item.themeCount || 1,
     description: item.description || '',
     type: item.type || 'image',
     url: item.url,
@@ -128,9 +152,10 @@ async function getGalleryApi(req, res) {
   const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 120) : '';
   const category =
     typeof req.query.category === 'string' ? req.query.category.trim().slice(0, 40) : '';
+  const theme = typeof req.query.theme === 'string' ? req.query.theme.trim().slice(0, 120) : '';
   const offset = parsePositiveInt(req.query.offset, 0);
   const limit = Math.min(parsePositiveInt(req.query.limit, SSR_PAGE_SIZE), MAX_API_LIMIT);
-  const { items, total } = await queryGallery({ q, category, offset, limit });
+  const { items, total } = await queryGallery({ q, category, theme, offset, limit });
 
   res.json({ items: items.map(toPublicGalleryItem), total });
 }
@@ -149,7 +174,7 @@ function resolveGalleryType(requestedType, mediaFile) {
 }
 
 async function createGalleryItem(req, _res) {
-  const { title, category, description, order, type } = req.body;
+  const { title, category, theme, description, order, type } = req.body;
   const mediaFile = pickUpload(req, 'media');
   const posterFile = pickUpload(req, 'poster');
   const resolvedType = resolveGalleryType(type, mediaFile);
@@ -160,9 +185,12 @@ async function createGalleryItem(req, _res) {
     throw error;
   }
 
+  const normalizedTheme = typeof theme === 'string' ? theme.trim() : '';
+
   return GalleryItem.create({
     title,
     category: category || 'general',
+    theme: normalizedTheme || null,
     description: description || '',
     type: resolvedType,
     url: `/uploads/gallery/${mediaFile.filename}`,

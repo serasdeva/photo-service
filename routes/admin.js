@@ -214,6 +214,11 @@ const galleryRules = [
     .trim()
     .matches(/^[A-Za-zА-Яа-я0-9 _-]+$/)
     .withMessage('Категория: буквы, цифры, пробел, - и _.'),
+  body('theme')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ min: 2, max: 120 })
+    .withMessage('Тема: от 2 до 120 символов.'),
   body('type')
     .optional({ checkFalsy: true })
     .isIn(['image', 'video'])

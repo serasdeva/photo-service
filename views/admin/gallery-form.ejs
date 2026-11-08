@@ -22,6 +22,11 @@
             <input id="g-title" name="title" value="<%= formValues.title %>" required placeholder="Например: Печать семейных фото" />
           </div>
           <div>
+            <label for="g-theme">Тема / серия</label>
+            <input id="g-theme" name="theme" value="<%= formValues.theme || '' %>" placeholder="Например: Свадьба в лесу" />
+            <div class="form-hint">Если несколько фото относятся к одной теме, задайте одинаковое имя серии — они будут открываться вместе в слайдшоу.</div>
+          </div>
+          <div>
             <label for="g-description">Описание</label>
             <textarea id="g-description" name="description" placeholder="Краткое описание работы"><%= formValues.description %></textarea>
           </div>

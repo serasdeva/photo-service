@@ -163,11 +163,12 @@ async function saveGallery(req, res) {
         return res.redirect('/admin/gallery');
       }
 
-      const { title, category, description, order, type, removeFile, removePoster } = req.body;
+      const { title, category, theme, description, order, type, removeFile, removePoster } = req.body;
       const mediaFile = pickUpload(req, 'media');
       const posterFile = pickUpload(req, 'poster');
       const wantsRemoveFile = removeFile === '1' || removeFile === 'on';
       const wantsRemovePoster = removePoster === '1' || removePoster === 'on';
+      const normalizedTheme = typeof theme === 'string' ? theme.trim() : '';
 
       // Нельзя оставить запись галереи без файла: url обязателен (notEmpty).
       if (wantsRemoveFile && !mediaFile) {
@@ -179,6 +180,7 @@ async function saveGallery(req, res) {
       const updateData = {
         title,
         category: category || 'general',
+        theme: normalizedTheme || null,
         description: description || '',
         order: Number(order || 0),
         type: mediaFile
