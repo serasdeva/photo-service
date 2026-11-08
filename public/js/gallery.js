@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const grid = document.querySelector('[data-gallery-grid]');
+  const grid = document.querySelector('[data-gallery-grid], .gallery-grid');
   const filterButtons = Array.from(document.querySelectorAll('[data-filter]'));
   const moreButton = document.querySelector('[data-gallery-more]');
   const statusNode = document.querySelector('[data-gallery-status]');
@@ -290,17 +290,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!nextItems.length) {
-      nextItems = loadedItems().filter((candidate) => {
-        if (themeKey) return getThemeKey(candidate) === themeKey;
-        return candidate === item;
-      });
+      nextItems = loadedItems().filter(
+        (candidate) => !themeKey || getThemeKey(candidate) === themeKey
+      );
     }
 
     if (!nextItems.length) return;
 
     lightboxItems = nextItems;
-    currentIndex = Math.max(nextItems.indexOf(item), 0);
-    if (currentIndex === -1 && nextItems.length) currentIndex = 0;
+    const itemSrc = item.getAttribute('data-src');
+    const itemTitle = item.getAttribute('data-title');
+    currentIndex = nextItems.findIndex(
+      (candidate) =>
+        candidate.getAttribute('data-src') === itemSrc &&
+        candidate.getAttribute('data-title') === itemTitle
+    );
+    if (currentIndex < 0) currentIndex = 0;
 
     lastFocused = document.activeElement;
     lightbox.classList.add('open');

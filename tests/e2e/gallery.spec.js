@@ -28,6 +28,10 @@ test.describe('галерея', () => {
 
     await page.keyboard.press('Escape');
     await expect(lightbox).not.toHaveClass(/open/);
+
+    await items.nth(1).click();
+    await expect(lightbox).toHaveClass(/open/);
+    await expect(page.locator('#lightbox-counter')).toHaveText(`2 / ${TOTAL}`);
   });
 
   test('фильтр по категории перерисовывает сетку', async ({ page }) => {
@@ -38,5 +42,18 @@ test.describe('галерея', () => {
     await expect(page.locator('[data-gallery-item]')).toHaveCount(5);
     await expect(page.locator('[data-gallery-status]')).toHaveText('Показано 5 из 5');
     await expect(page.locator('[data-gallery-more]')).toBeHidden();
+  });
+
+  test('перелистывает работы в галерее на главной', async ({ page }) => {
+    await page.goto('/');
+
+    const items = page.locator('.gallery-grid [data-gallery-item]');
+    const total = await items.count();
+    expect(total).toBeGreaterThan(1);
+
+    await items.first().click();
+    await expect(page.locator('#lightbox-counter')).toHaveText(`1 / ${total}`);
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('#lightbox-counter')).toHaveText(`2 / ${total}`);
   });
 });

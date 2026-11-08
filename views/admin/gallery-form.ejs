@@ -18,8 +18,11 @@
         <div class="form-section">
           <div class="form-section-title"><i class="fa-solid fa-align-left"></i> Основное</div>
           <div>
-            <label for="g-title">Название <span class="req">*</span></label>
-            <input id="g-title" name="title" value="<%= formValues.title %>" required placeholder="Например: Печать семейных фото" />
+            <label for="g-title">Название<% if (item) { %> <span class="req">*</span><% } else { %> (для одного фото)<% } %></label>
+            <input id="g-title" name="title" value="<%= formValues.title %>" <%= item ? 'required' : '' %> placeholder="Например: Семейная фотосессия" />
+            <% if (!item) { %>
+              <div class="form-hint">При загрузке нескольких фото названия возьмутся из имён файлов.</div>
+            <% } %>
           </div>
           <div>
             <label for="g-theme">Тема / серия</label>
@@ -68,8 +71,8 @@
           <div class="form-section-title"><i class="fa-regular fa-file"></i> Файл</div>
           <div>
             <label for="g-media">Файл</label>
-            <input id="g-media" type="file" name="media" accept="image/*,video/mp4" <%= item ? '' : 'required' %> />
-            <div class="form-hint">JPG, PNG, WEBP или MP4, до 25 МБ.</div>
+            <input id="g-media" type="file" name="media" accept="image/*,video/mp4" <%= item ? '' : 'multiple required data-batch-media' %> />
+            <div class="form-hint">JPG, PNG, WEBP или MP4, до 25 МБ каждый; можно выбрать до 10 файлов.</div>
           </div>
           <% if (item && item.url) { %>
             <div class="file-preview">

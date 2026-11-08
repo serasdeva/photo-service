@@ -1,5 +1,6 @@
 const { GalleryItem } = require('../models');
 const { filterByTerm } = require('../utils/search');
+const path = require('path');
 
 const CATEGORY_LABELS = {
   general: 'Общее',
@@ -175,30 +176,45 @@ function resolveGalleryType(requestedType, mediaFile) {
 
 async function createGalleryItem(req, _res) {
   const { title, category, theme, description, order, type } = req.body;
-  const mediaFile = pickUpload(req, 'media');
+  const mediaFiles = (req.files && req.files.media) || [];
   const posterFile = pickUpload(req, 'poster');
-  const resolvedType = resolveGalleryType(type, mediaFile);
 
-  if (!mediaFile || !mediaFile.filename) {
+  if (!mediaFiles.length || mediaFiles.some((file) => !file.filename)) {
     const error = new Error('Файл галереи обязателен');
     error.status = 400;
     throw error;
   }
 
   const normalizedTheme = typeof theme === 'string' ? theme.trim() : '';
+  const baseOrder = Number(order || 0);
 
-  return GalleryItem.create({
-    title,
-    category: category || 'general',
-    theme: normalizedTheme || null,
-    description: description || '',
-    type: resolvedType,
-    url: `/uploads/gallery/${mediaFile.filename}`,
-    thumbnail: posterFile ? `/uploads/gallery/${posterFile.filename}` : null,
-    width: resolvedType === 'image' ? (mediaFile.width ?? null) : null,
-    height: resolvedType === 'image' ? (mediaFile.height ?? null) : null,
-    order: Number(order || 0),
+  const records = mediaFiles.map((mediaFile, index) => {
+    const resolvedType = resolveGalleryType(type, mediaFile);
+    const filename = path
+      .parse(path.basename(String(mediaFile.originalname || '').replace(/\\/g, '/')))
+      .name.trim();
+    const itemTitle =
+      mediaFiles.length > 1
+        ? (filename || `Фото ${index + 1}`).slice(0, 120)
+        : String(title || '').trim();
+
+    return {
+      title: itemTitle,
+      category: category || 'general',
+      theme: normalizedTheme || null,
+      description: description || '',
+      type: resolvedType,
+      url: `/uploads/gallery/${mediaFile.filename}`,
+      thumbnail:
+        mediaFiles.length === 1 && posterFile ? `/uploads/gallery/${posterFile.filename}` : null,
+      width: resolvedType === 'image' ? (mediaFile.width ?? null) : null,
+      height: resolvedType === 'image' ? (mediaFile.height ?? null) : null,
+      order: baseOrder + index,
+    };
   });
+
+  const items = await GalleryItem.bulkCreate(records);
+  return items.length === 1 ? items[0] : items;
 }
 
 module.exports = {

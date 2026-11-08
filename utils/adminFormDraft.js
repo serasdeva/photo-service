@@ -10,7 +10,16 @@ const DRAFT_FIELDS = {
     'isActive',
     'removeImage',
   ],
-  gallery: ['title', 'description', 'type', 'category', 'order', 'removeFile', 'removePoster'],
+  gallery: [
+    'title',
+    'description',
+    'type',
+    'category',
+    'theme',
+    'order',
+    'removeFile',
+    'removePoster',
+  ],
   settings: [
     'siteName',
     'phone',

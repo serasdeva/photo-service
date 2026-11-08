@@ -129,6 +129,17 @@ function rejectOversizedPoster(req, res, next) {
   );
 }
 
+function rejectBatchPoster(req, res, next) {
+  const mediaFiles = req.files && req.files.media;
+  const posters = req.files && req.files.poster;
+  if (!Array.isArray(mediaFiles) || mediaFiles.length < 2 || !posters || !posters.length) {
+    return next();
+  }
+
+  discardUploadedFile(req);
+  return failUpload(req, res, 'Постер можно загрузить только для одного элемента.');
+}
+
 function discardUploadedFile(req) {
   const uploadedFiles = [req.file, ...Object.values(req.files || {}).flat()].filter(
     (file) => file && file.path
@@ -205,10 +216,19 @@ const serviceRules = [
 ];
 
 const galleryRules = [
-  body('title')
-    .trim()
-    .isLength({ min: 2, max: 120 })
-    .withMessage('Название: от 2 до 120 символов.'),
+  body('title').custom((value, { req }) => {
+    const mediaFiles = req.files && req.files.media;
+    const isBatchCreate = !req.params.id && Array.isArray(mediaFiles) && mediaFiles.length > 1;
+    const title = typeof value === 'string' ? value.trim() : '';
+
+    if (isBatchCreate && !title) {
+      return true;
+    }
+    if (title.length < 2 || title.length > 120) {
+      throw new Error('Название: от 2 до 120 символов.');
+    }
+    return true;
+  }),
   body('category')
     .optional({ checkFalsy: true })
     .trim()
@@ -264,7 +284,11 @@ router.post(
 );
 router.post('/services/:id/delete', asyncHandler(deleteService));
 
-const uploadGalleryMediaFields = uploadGalleryMedia.fields([
+const createGalleryMediaFields = uploadGalleryMedia.fields([
+  { name: 'media', maxCount: 10 },
+  { name: 'poster', maxCount: 1 },
+]);
+const updateGalleryMediaFields = uploadGalleryMedia.fields([
   { name: 'media', maxCount: 1 },
   { name: 'poster', maxCount: 1 },
 ]);
@@ -274,7 +298,8 @@ router.get('/gallery/new', asyncHandler(renderGalleryForm));
 router.get('/gallery/:id/edit', asyncHandler(renderGalleryForm));
 router.post(
   '/gallery',
-  handleUpload(uploadGalleryMediaFields, 25),
+  handleUpload(createGalleryMediaFields, 25),
+  rejectBatchPoster,
   rejectOversizedPoster,
   verifyCsrfAfterUpload,
   validate(galleryRules),
@@ -283,7 +308,7 @@ router.post(
 );
 router.post(
   '/gallery/:id',
-  handleUpload(uploadGalleryMediaFields, 25),
+  handleUpload(updateGalleryMediaFields, 25),
   rejectOversizedPoster,
   verifyCsrfAfterUpload,
   validate(galleryRules),

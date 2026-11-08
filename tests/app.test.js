@@ -1552,7 +1552,18 @@ test('gallery renders first page on server and paginates through the API', async
     );
     assert.deepEqual(
       Object.keys(first.body.items[0]).sort(),
-      ['category', 'description', 'height', 'theme', 'themeCount', 'thumbnail', 'title', 'type', 'url', 'width'],
+      [
+        'category',
+        'description',
+        'height',
+        'theme',
+        'themeCount',
+        'thumbnail',
+        'title',
+        'type',
+        'url',
+        'width',
+      ],
       'API exposes only the card fields, not internal id/order/timestamps'
     );
 
@@ -1626,7 +1637,9 @@ test('gallery theme groups keep related photos together in the same slideshow', 
   ]);
 
   try {
-    const themed = await request(app).get(`/api/gallery?theme=${encodeURIComponent(theme)}&limit=48`);
+    const themed = await request(app).get(
+      `/api/gallery?theme=${encodeURIComponent(theme)}&limit=48`
+    );
     assert.equal(themed.status, 200);
     assert.equal(themed.body.total, 2);
     assert.equal(themed.body.items.length, 2);
@@ -1635,7 +1648,10 @@ test('gallery theme groups keep related photos together in the same slideshow', 
 
     const page = await request(app).get('/gallery');
     assert.equal(page.status, 200);
-    assert.match(page.text, new RegExp(`data-theme="${theme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
+    assert.match(
+      page.text,
+      new RegExp(`data-theme="${theme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`)
+    );
     assert.match(page.text, /class="gallery-series-badge"/);
     assert.match(page.text, /class="gallery-series-count">2 фото/);
   } finally {
@@ -1752,6 +1768,56 @@ test('uploaded images are resized to webp and broken files are rejected', async 
     );
     await Service.destroy({ where: { title: [bigTitle, brokenTitle] } });
     await GalleryItem.destroy({ where: { title: posterTitle } });
+  }
+});
+
+test('gallery accepts multiple photos with one shared theme', async () => {
+  const jar = await loginJar();
+  const theme = `Серия ${Date.now()}`;
+  const createdFiles = [];
+  const form = await request(app).get('/admin/gallery/new').set('Cookie', cookieHeader(jar));
+  assert.equal(form.status, 200);
+  assert.match(form.text, /multiple required data-batch-media/);
+  assert.match(form.text, /названия возьмутся из имён файлов/i);
+
+  const firstPhoto = await sharp({
+    create: { width: 80, height: 60, channels: 3, background: { r: 170, g: 80, b: 40 } },
+  })
+    .jpeg()
+    .toBuffer();
+  const secondPhoto = await sharp({
+    create: { width: 60, height: 80, channels: 3, background: { r: 40, g: 100, b: 170 } },
+  })
+    .jpeg()
+    .toBuffer();
+
+  try {
+    const response = await request(app)
+      .post('/admin/gallery')
+      .set('Cookie', cookieHeader(jar))
+      .set('Accept', 'text/html')
+      .field('_csrf', csrfToken)
+      .field('category', 'wedding')
+      .field('theme', theme)
+      .attach('media', firstPhoto, { filename: 'first-scene.jpg', contentType: 'image/jpeg' })
+      .attach('media', secondPhoto, { filename: 'second-scene.jpg', contentType: 'image/jpeg' });
+
+    assert.equal(response.headers.location, '/admin/gallery');
+    const items = await GalleryItem.findAll({ where: { theme }, order: [['order', 'ASC']] });
+    assert.equal(items.length, 2);
+    assert.deepEqual(
+      items.map((item) => item.title),
+      ['first-scene', 'second-scene']
+    );
+    assert.ok(items.every((item) => item.category === 'wedding'));
+    items.forEach((item) =>
+      createdFiles.push(path.join(__dirname, '..', 'public', item.url.replace(/^\//, '')))
+    );
+  } finally {
+    createdFiles.forEach((file) =>
+      fs.rmSync(file, { force: true, maxRetries: 5, retryDelay: 100 })
+    );
+    await GalleryItem.destroy({ where: { theme } });
   }
 });
 
